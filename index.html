@@ -182,12 +182,38 @@ body {
   padding-bottom: 18px;
   border-bottom: 1px solid #e2e8f0;
 }
-label { font-weight: bold; margin-bottom: 6px; display: block; }
-input, textarea, select {
+
+.form-group label.question-label {
+  font-weight: bold;
+  margin-bottom: 8px;
+  display: block;
+}
+
+input[type="text"], 
+input[type="date"], 
+textarea, 
+select {
   width: 100%;
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.option-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.option-label input[type="radio"],
+.option-label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
 }
 
 .submit-btn {
@@ -293,12 +319,12 @@ let bellringers = [];
 
 // Stock image pool for default visual slides
 const stockImagePool = [
-  'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=300&q=80', // Turtle / Nature
-  'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=300&q=80', // Water / Earth-Diver
-  'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=300&q=80', // Ecology / Forest
-  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=300&q=80', // Campfire / Orality
-  'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=300&q=80', // Literature / History
-  'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=300&q=80'  // Writing Workshop
+  'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=300&q=80'
 ];
 
 // Emoji fallback pool
@@ -313,9 +339,7 @@ function renderSlides(slides) {
     wrapper.className = 'slide' + (index === 0 ? ' active' : '');
     wrapper.id = `slide-${index + 1}`;
 
-    // Priority 1: slide.image OR Stock Web Image
     const imageUrl = slide.image || stockImagePool[index % stockImagePool.length];
-    // Fallback: slide.icon OR Emoji Pool
     const fallbackEmoji = slide.icon || iconPool[index % iconPool.length];
 
     const visualMediaHTML = `
@@ -347,6 +371,7 @@ function renderSlides(slides) {
     stage.appendChild(wrapper);
   });
 }
+
 function initLesson(data) {
   bellringers = data.bellringers || [];
   totalSlides = (data.slides || []).length || 1;
@@ -405,24 +430,31 @@ function renderForm(fields) {
   fields.forEach(field => {
     const group = document.createElement('div');
     group.className = 'form-group';
-    const id = `field_${field.label.replace(/\s+/g, '_').toLowerCase()}`;
+    const id = field.field || `field_${field.label.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase()}`;
 
     let inputHTML = '';
     if (field.type === 'short_text') {
       inputHTML = `<input type="text" id="${id}" ${field.required ? 'required' : ''} />`;
     } else if (field.type === 'date') {
       inputHTML = `<input type="date" id="${id}" ${field.required ? 'required' : ''} />`;
+    } else if (field.type === 'long_text' || field.type === 'quote_citation') {
+      inputHTML = `<textarea id="${id}" rows="4" ${field.required ? 'required' : ''}></textarea>`;
+    } else if (field.type === 'multiple_choice' || field.type === 'true_false') {
+      const options = field.type === 'true_false' ? ['True', 'False'] : (field.options || []);
+      inputHTML = options.map((option, index) => 
+        `<label class="option-label"><input type="radio" id="${id}_${index}" name="${id}" value="${option}" ${field.required ? 'required' : ''} /> ${option}</label>`
+      ).join('');
+    } else if (field.type === 'checkbox' || field.type === 'checkbox_group' || field.type === 'multi_select') {
+      inputHTML = (field.options || []).map((option, index) => 
+        `<label class="option-label"><input type="checkbox" id="${id}_${index}" name="${id}" value="${option}" /> ${option}</label>`
+      ).join('');
     } else if (field.type === 'rating_scale') {
       inputHTML = `<select id="${id}">${(field.options || []).map(o => `<option>${o}</option>`).join('')}</select>`;
-    } else if (field.type === 'quote_citation') {
-      inputHTML = `<textarea id="${id}" rows="3" ${field.required ? 'required' : ''}></textarea>`;
     } else if (field.type === 'select_rubric') {
       inputHTML = `<select id="${id}"><option>-- Select Rubric Benchmark Level --</option>${(field.options || []).map(o => `<option>${o}</option>`).join('')}</select>`;
-    } else if (field.type === 'checkbox_group' || field.type === 'multi_select') {
-      inputHTML = (field.options || []).map(o => `<label><input type="checkbox" name="${id}" value="${o}" /> ${o}</label>`).join('<br/>');
     }
 
-    group.innerHTML = `<label for="${id}">${field.label}</label>${inputHTML}`;
+    group.innerHTML = `<label class="question-label" for="${id}">${field.label}</label>${inputHTML}`;
     form.appendChild(group);
   });
 
@@ -444,6 +476,7 @@ function switchTab(key) {
     document.getElementById('form-tab').classList.add('active');
   }
 }
+
 window.addEventListener('DOMContentLoaded', () => initLesson({"day": 7, "title": "Day 7: The Outsiders - Understanding Conflict", "unit": "Unit 2: The Outsiders: Context & Conflict", "subject": "English 8", "bellringers": ["⚡ What is the fundamental difference between an internal conflict and an external conflict?", "💥 Give an example of a Person vs. Society conflict from real life or a book.", "🛡️ Why do people sometimes act aggressively when they feel afraid or cornered?", "💭 What internal pressure does a teenager experience when trying to fit in?"], "slides": [{"title": "⚡ Defining Conflict in Literature", "standard": "MN ELA 8.1.3.3", "bullets": ["Conflict is the central struggle between opposing forces in a story.", "Without conflict, narrative drive stagnates and character development halts.", "Literary conflicts fall into two main categories: internal and external."], "callout": "💥 Conflict drives plot forward and tests character motivation."}, {"title": "🧠 Internal Conflict: Person vs. Self", "standard": "MN ELA 8.1.3.3", "bullets": ["Internal conflict occurs inside a character's mind or heart.", "Involves moral dilemmas, competing loyalties, fear, or identity struggles.", "Ponyboy struggles internally with belonging vs. individuality."], "callout": "💭 The hardest battles are often fought within a character's own mind."}, {"title": "🤺 External Conflict Types in Literature", "standard": "MN ELA 8.1.3.3", "bullets": ["Person vs. Person: Physical or verbal battles between characters.", "Person vs. Society: Struggle against unjust social norms or class systems.", "Person vs. Environment: Survival against harsh physical conditions."], "callout": "🌐 External forces exert constant pressure on character actions."}, {"title": "⚔️ Greasers vs. Socs: Person vs. Person Conflict", "standard": "MN ELA 8.1.3.3", "bullets": ["Territorial rivalries lead to physical ambushes and street fights.", "Violence is triggered by small insults, envy, and ingrained hatred.", "Escalating retaliation prevents either side from finding peace."], "callout": "🥊 Violence creates a cycle of revenge that traps both groups."}, {"title": "🏛️ Person vs. Society: The Weight of Social Expectations", "standard": "MN ELA 8.1.6.6", "bullets": ["Greasers fight against a social order that brands them as criminals.", "Law enforcement and schools treat Greasers with automatic suspicion.", "Socs face societal pressure to maintain a perfect, wealthy image."], "callout": "⚖️ Unfair societal rules create invisible walls that divide communities."}, {"title": "🏠 Internal Conflict in the Curtis Household", "standard": "MN ELA 8.1.3.3", "bullets": ["Darry struggles internally between being a loving brother and a strict parent.", "Ponyboy feels Darry resents him for sacrificing his college football future.", "Lack of open communication fuels misunderstandings between the brothers."], "callout": "💔 Love mixed with anxiety can look like anger if unexpressed."}, {"title": "😨 Johnny Cade: Trauma and Survival Anxiety", "standard": "MN ELA 8.1.3.3", "bullets": ["Johnny carries severe psychological trauma from the Soc beating.", "His internal fear manifests as hypervigilance and carrying a switchblade.", "His motivation shifts from passive fear to desperate self-defense."], "callout": "🔪 Past trauma profoundly shapes future decision-making under stress."}, {"title": "🎯 Mapping Motivation vs. Societal Pressure", "standard": "MN ELA 8.1.3.3", "bullets": ["Character motivation is the internal reason behind a character's choices.", "Societal pressure is the external force pushing them to act a certain way.", "When motivation and pressure collide, major plot turning points occur."], "callout": "📍 Choices happen at the intersection of desire and external pressure."}, {"title": "📋 Completing the Conflict Mapping Organizer", "standard": "MN ELA 8.1.3.3", "bullets": ["Open your Conflict Mapping Graphic Organizer PDF.", "Identify one internal and one external conflict for Ponyboy Curtis.", "Cite direct textual quotes showing how these conflicts drive his choices."], "callout": "📝 Visual mapping helps clarify complex character dynamics."}, {"title": "💬 Small Group Conflict Analysis", "standard": "MN ELA 8.1.3.3", "bullets": ["Discuss with a partner: Is Dally Winston's behavior driven by internal or external factors?", "Compare how Darry and Sodapop respond to the pressure of raising Ponyboy.", "Identify how societal bias shapes the conflict between Greasers and Socs."], "callout": "🗣️ Collaborative discussion exposes deeper layers of character motivation."}, {"title": "🔍 Synthesis: Conflict as a Theme Catalyst", "standard": "MN ELA 8.1.6.6", "bullets": ["Conflict highlights the novel's core themes: loyalty, identity, and class distinction.", "How characters respond to pressure reveals their true moral character.", "Resolving conflicts requires empathy and breaking societal patterns."], "callout": "🌟 Conflict reveals who characters truly are under pressure."}, {"title": "🏁 Day 7 Summary & Preview", "standard": "MN ELA 8.1.3.3", "bullets": ["The Outsiders features layered internal and external conflicts.", "Motivation vs. pressure drives character choices in Tulsa.", "Tomorrow we examine contrasting perspectives between Greasers and Socs."], "callout": "🚀 Excellent analysis today! Tomorrow: Greaser vs. Soc perspectives!"}], "resources": [{"title": "Character Motivation & Conflict Organizer", "description": "Graphic organizer for mapping internal/external conflict and societal pressures.", "file": "conflict_mapping_organizer.pdf"}], "form": [{"field": "student_name", "label": "Student Name", "type": "short_text", "required": true}, {"field": "date", "label": "Date", "type": "date", "required": true}, {"field": "q1", "label": "Define internal conflict in your own words.", "type": "short_text", "required": true}, {"field": "q2", "label": "Which scenario best represents a Person vs. Society conflict?", "type": "multiple_choice", "options": ["Ponyboy getting jumped by five Socs on his walk home.", "Greasers fighting against societal stereotypes that brand them delinquents.", "Darry arguing with Ponyboy about his grades and curfew.", "Johnny struggling with fear after being beaten."], "required": true}, {"field": "q3", "label": "Explain the internal conflict Darry faces regarding raising his brothers.", "type": "long_text", "required": true}, {"field": "q4", "label": "How did Johnny Cade's past trauma create an ongoing internal conflict for him?", "type": "long_text", "required": true}, {"field": "q5", "label": "External conflicts in literature occur entirely inside a character's thoughts.", "type": "true_false", "required": true}, {"field": "q6", "label": "Select two external pressures that influence Ponyboy's behavior.", "type": "checkbox", "options": ["The threat of Soc violence in public areas", "The risk of the state placing him in a foster home", "His personal love for reading poetry", "His enjoyment of watching sunsets alone"], "required": true}, {"field": "q7", "label": "What is character motivation, and why is it important to analyze?", "type": "long_text", "required": true}, {"field": "q8", "label": "Give one example of a Person vs. Person conflict from Chapters 1-2.", "type": "short_text", "required": true}, {"field": "q9", "label": "Why do the Greasers feel that violence is their only logical response to Soc attacks?", "type": "long_text", "required": true}, {"field": "q10", "label": "Self-Assessment: Distinguishing Internal & External Conflict", "type": "rating_scale", "options": ["1 - Needs Support (Struggling to differentiate between internal and external conflict)", "2 - Developing (Can identify conflict types but needs help linking them to motivation)", "3 - Competent (Accurately classifies conflicts and maps character motivations vs pressures)", "4 - Expert (Provides subtle analysis of how intersecting conflicts drive story themes)"], "required": true}]}));
 </script>
 </body>
